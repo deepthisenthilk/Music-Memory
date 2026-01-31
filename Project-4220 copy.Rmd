@@ -1,0 +1,120 @@
+---
+title: "Project - STAT4220"
+author: "Anudeepthi Senthil Kumar"
+date: "2025-11-19"
+output: pdf_document
+---
+```{r}
+data <- read.csv("~/Documents/U G A /Fall 25/STAT4220 - Applied Experimental Designs/PROJECT/Data_Collection.csv")
+```
+
+```{r}
+colnames(data)
+```
+
+```{r}
+library(emmeans)
+library(tidyverse)
+```
+
+```{r}
+# converting wide format → long format
+data <- data %>%
+  pivot_longer(
+    cols = c(GammaWord, PopImage, GammaImage, PopWord),
+    names_to = "task_type",
+    values_to = "score"
+  )
+
+```
+
+```{r}
+data <- data %>%
+  separate(
+    task_type,
+    into = c("condition", "task"),
+    sep = "(?<=Gamma)|(?<=Pop)"
+  ) %>%
+  mutate(
+    Partcipants = factor(Partcipants),
+    condition   = factor(condition),
+    task        = factor(task),
+    score       = as.numeric(score)
+  )
+
+```
+
+
+```{r}
+#summary by condition
+data %>%
+  group_by(condition) %>%
+  summarise(
+    mean = mean(score, na.rm = TRUE),
+    sd   = sd(score, na.rm = TRUE),
+    n    = n()
+  )
+
+# Summary by task
+data %>%
+  group_by(task) %>%
+  summarise(
+    mean = mean(score, na.rm = TRUE),
+    sd   = sd(score, na.rm = TRUE),
+    n    = n()
+  )
+```
+
+```{r}
+# Boxplot by condition
+ggplot(data, aes(x = condition, y = score)) +
+  geom_boxplot() +
+  labs(title = "Scores by Condition")
+
+# Boxplot by task
+ggplot(data, aes(x = task, y = score)) +
+  geom_boxplot() +
+  labs(title = "Scores by Task")
+
+# Histogram of scores
+ggplot(data, aes(x = score)) +
+  geom_histogram(bins = 20) +
+  labs(title = "Distribution of Scores")
+```
+
+```{r}
+# Q-Q plot for normality
+ggplot(data, aes(sample = score)) +
+  stat_qq() +
+  stat_qq_line() +
+  labs(title = "Normal Q-Q Plot")
+
+# Residuals vs fitted after main-effects model
+temp_model <- lm(score ~ condition + task, data = data)
+
+ggplot(data.frame(
+  fitted = fitted(temp_model),
+  resid  = resid(temp_model)
+), aes(x = fitted, y = resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  labs(title = "Residuals vs Fitted Values")
+```
+```{r}
+anova_model <- aov(score ~ condition + task, data = data)
+
+summary(anova_model)
+```
+```{r}
+emmeans(anova_model, pairwise ~ condition)
+```
+
+```{r}
+emmeans(anova_model, pairwise ~ task)
+```
+
+```{r}
+emmeans(anova_model, ~ condition) %>% confint()
+emmeans(anova_model, ~ task) %>% confint()
+```
+
